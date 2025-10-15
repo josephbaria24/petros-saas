@@ -11,7 +11,7 @@ export function Logo({ className = "", showText = true }: LogoProps) {
       <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500">
         <span className="text-lg font-bold text-white">P</span>
       </div>
-      {showText && <span className="text-xl font-bold text-foreground">Petros SaaS</span>}
+      {showText && <span className="text-xl font-bold text-foreground">Petros LMS</span>}
     </Link>
   )
 }

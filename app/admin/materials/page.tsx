@@ -1,3 +1,7 @@
+'use client'
+import { useState, useEffect } from "react"
+import { supabase } from "@/lib/supabase-client"
+import { UploadMaterialModal } from "@/components/admin/materials/upload-material-modal"
 import { MainLayout } from "@/components/layouts/main-layout"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -5,10 +9,35 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search, Plus, MoreVertical, Edit, Trash2, Download, Upload } from "lucide-react"
-import { mockMaterials } from "@/lib/mock-data"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
+
+interface Material {
+  id: string
+  title: string
+  description: string
+  type: string
+  category: string
+  tags: string[]
+  file_url: string
+  updated_at: string
+}
+
 export default function AdminMaterialsPage() {
+
+  const [materials, setMaterials] = useState<Material[]>([])
+
+const fetchMaterials = async () => {
+  const { data, error } = await supabase.from('materials').select('*').order('updated_at', { ascending: false })
+  if (!error) setMaterials(data as Material[])
+}
+
+useEffect(() => {
+  fetchMaterials()
+}, [])
+
+
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -18,10 +47,7 @@ export default function AdminMaterialsPage() {
             <h1 className="text-3xl font-bold text-foreground">E-Learning Materials</h1>
             <p className="text-muted-foreground mt-1">Manage EILTS, TOEFL, and other learning resources</p>
           </div>
-          <Button className="gap-2 bg-primary hover:bg-primary/90">
-            <Plus className="h-4 w-4" />
-            Upload Material
-          </Button>
+          <UploadMaterialModal onUploaded={fetchMaterials} />
         </div>
 
         {/* Search */}
@@ -55,7 +81,7 @@ export default function AdminMaterialsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {mockMaterials.map((material) => (
+                  {materials.map((material) => (
                       <tr
                         key={material.id}
                         className="border-b border-border last:border-0 hover:bg-accent/50 transition-colors"
@@ -88,7 +114,7 @@ export default function AdminMaterialsPage() {
                         </td>
                         <td className="p-4">
                           <span className="text-sm text-muted-foreground">
-                            {material.updatedAt.toLocaleDateString()}
+                          {new Date(material.updated_at).toLocaleDateString()}
                           </span>
                         </td>
                         <td className="p-4">
@@ -138,7 +164,7 @@ export default function AdminMaterialsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {mockMaterials
+                    {materials
                       .filter((m) => m.type === "EILTS")
                       .map((material) => (
                         <tr
@@ -165,7 +191,7 @@ export default function AdminMaterialsPage() {
                           </td>
                           <td className="p-4">
                             <span className="text-sm text-muted-foreground">
-                              {material.updatedAt.toLocaleDateString()}
+                            {new Date(material.updated_at).toLocaleDateString()}
                             </span>
                           </td>
                           <td className="p-4">
@@ -215,7 +241,7 @@ export default function AdminMaterialsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {mockMaterials
+                    {materials
                       .filter((m) => m.type === "Technical")
                       .map((material) => (
                         <tr
@@ -242,7 +268,7 @@ export default function AdminMaterialsPage() {
                           </td>
                           <td className="p-4">
                             <span className="text-sm text-muted-foreground">
-                              {material.updatedAt.toLocaleDateString()}
+                            {new Date(material.updated_at).toLocaleDateString()}
                             </span>
                           </td>
                           <td className="p-4">
