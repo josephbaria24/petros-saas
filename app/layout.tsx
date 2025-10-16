@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
 import { APP_NAME, APP_DESCRIPTION } from "@/lib/constants"
 import { ThemeProvider } from "@/components/theme-provider"
+import { Providers } from "./provider"
 
 const poppins = Geist({
   subsets: ["latin"],
@@ -38,7 +39,7 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            {children}
+            <Providers>{children}</Providers>
           </ThemeProvider>
         </body>
       </html>
