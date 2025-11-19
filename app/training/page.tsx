@@ -1,3 +1,4 @@
+//app\training\page.tsx
 import { MainLayout } from "@/components/layouts/main-layout"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"

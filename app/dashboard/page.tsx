@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card"
 import { BookOpen, Clock, TrendingUp, Award } from "lucide-react"
 
 export default async function DashboardPage() {
-  const supabase = createServerComponentClient({ cookies })
+  const supabase = createServerComponentClient({ cookies: () => cookies() })
   const {
     data: { session }
   } = await supabase.auth.getSession()

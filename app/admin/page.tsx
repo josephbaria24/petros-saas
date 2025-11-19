@@ -1,3 +1,5 @@
+
+//app\admin\page.tsx
 import { MainLayout } from "@/components/layouts/main-layout"
 import { Card } from "@/components/ui/card"
 import { Users, BookOpen, FileText, TrendingUp, Activity, Clock } from "lucide-react"
