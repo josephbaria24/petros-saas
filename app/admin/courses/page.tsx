@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Search, Plus, MoreVertical, Edit, Trash2, Eye } from "lucide-react"
+import { useSupabase } from "@/app/provider" 
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,6 +48,7 @@ interface Course {
 }
 
 export default function AdminCoursesPage() {
+  const { supabase } = useSupabase()
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(false)
   const [viewCourse, setViewCourse] = useState<Course | null>(null)

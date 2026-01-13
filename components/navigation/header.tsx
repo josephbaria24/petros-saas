@@ -1,27 +1,48 @@
+// components/navigation/header.tsx
 "use client"
 
 import { useRouter } from "next/navigation"
-import { Bell, LogOut, Search } from "lucide-react"
+import { Bell, LogOut, Search, Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ModeToggle } from "../mode-toggle"
-import { supabase } from "@/lib/supabase-client"
+import { useSupabase } from "@/app/provider" // ← Changed
 
-export function Header() {
+interface HeaderProps {
+  onMobileMenuToggle?: () => void
+}
+
+export function Header({ onMobileMenuToggle }: HeaderProps) {
+  const { supabase, user } = useSupabase() // ← Get from context
   const router = useRouter()
+
+  // ✅ User data comes from context - no fetching needed!
+  const userName = user?.email?.split("@")[0] || "User"
+  const userEmail = user?.email || "Loading..."
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut()
     if (error) {
       console.error("Logout failed:", error.message)
     } else {
-      router.push("/login")
+      // Force hard redirect to clear all state
+      window.location.href = "/login"
     }
   }
 
   return (
-    <header className="sticky top-0 z-40 border-0 border-border bg-background/95 backdrop-blur-lg">
+    <header className="sticky top-0 z-40 border-0 shadow-md bg-card backdrop-blur supports-[backdrop-filter]:bg-card/95">
       <div className="flex h-16 items-center gap-4 px-4 md:px-6">
+        {/* Mobile Menu Toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="md:hidden"
+          onClick={onMobileMenuToggle}
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+
         {/* Search Bar */}
         <div className="flex-1 max-w-xl">
           <div className="relative">
@@ -29,25 +50,53 @@ export function Header() {
             <Input
               type="search"
               placeholder="Search courses, materials..."
-              className="w-full pl-10 bg-accent/50 border-0 focus-visible:ring-1"
+              className="w-full pl-10 bg-background border-border focus-visible:ring-1 focus-visible:ring-primary"
             />
           </div>
         </div>
 
-        {/* Actions */}
+        {/* Right Actions */}
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="relative">
+          {/* Notifications */}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="relative hover:bg-accent transition-colors"
+          >
             <Bell className="h-5 w-5" />
-            <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-secondary" />
+            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
           </Button>
-          <ModeToggle />
-        </div>
 
-        {/* Logout Icon aligned right */}
-        <div className="ml-auto">
-          <button onClick={handleLogout}>
-            <LogOut className="h-5 w-5 text-foreground hover:text-red-500 cursor-pointer" />
-          </button>
+          {/* Theme Toggle */}
+          <ModeToggle />
+
+          {/* User Profile - Desktop */}
+          <div className="hidden md:flex items-center gap-3 ml-2 pl-3 border-l border-border">
+            <div className="text-right">
+              <p className="text-sm font-medium text-foreground leading-none">
+                {userName}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {userEmail}
+              </p>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground flex-shrink-0">
+              <span className="text-sm font-semibold">
+                {userName?.charAt(0).toUpperCase() || "U"}
+              </span>
+            </div>
+          </div>
+
+          {/* Logout Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleLogout}
+            className="hover:bg-destructive/10 hover:text-destructive transition-colors"
+            title="Logout"
+          >
+            <LogOut className="h-5 w-5" />
+          </Button>
         </div>
       </div>
     </header>

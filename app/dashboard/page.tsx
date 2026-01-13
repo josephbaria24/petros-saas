@@ -1,55 +1,80 @@
 // app/dashboard/page.tsx
 import { redirect } from "next/navigation"
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
+import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { MainLayout } from "@/components/layouts/main-layout"
 import { Card } from "@/components/ui/card"
 import { BookOpen, Clock, TrendingUp, Award } from "lucide-react"
 
-export default async function DashboardPage() {
-  const supabase = createServerComponentClient({ cookies: () => cookies() })
-  const {
-    data: { session }
-  } = await supabase.auth.getSession()
+// ✅ Cache page for 60 seconds
+export const revalidate = 60
 
-  if (!session) {
+export default async function DashboardPage() {
+  const cookieStore = await cookies()
+  
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // Server Component - middleware handles this
+          }
+        },
+      },
+    }
+  )
+
+  const {
+    data: { user },
+    error
+  } = await supabase.auth.getUser()
+
+  if (error || !user) {
     redirect("/login")
   }
 
-  const userId = session.user.id
+  const userId = user.id
 
-  // Fetch enrollments
-  const { data: enrollments, error: enrollmentsError } = await supabase
-    .from("enrollments")
-    .select("progress_percent, course_id")
-    .eq("user_id", userId)
+  // ✅ Combine queries with Promise.all for better performance
+  const [enrollmentsData, certificatesData] = await Promise.all([
+    supabase
+      .from("enrollments")
+      .select("progress_percent, course_id, courses(duration)")
+      .eq("user_id", userId),
+    supabase
+      .from("certificates")
+      .select("id")
+      .eq("user_id", userId)
+  ])
 
-  const enrolledCoursesCount = enrollments?.length || 0
+  const enrollments = enrollmentsData.data || []
+  const certificates = certificatesData.data || []
+
+  const enrolledCoursesCount = enrollments.length
   const avgProgress =
     enrolledCoursesCount > 0
       ? Math.round(
-          enrollments!.reduce((sum, e) => sum + (e.progress_percent || 0), 0) /
+          enrollments.reduce((sum, e) => sum + (e.progress_percent || 0), 0) /
             enrolledCoursesCount
         )
       : 0
 
-  // Fetch course durations
-  const courseIds = enrollments?.map((e) => e.course_id) || []
-  const { data: courses } = await supabase
-    .from("courses")
-    .select("duration")
-    .in("id", courseIds)
-
-  // Assuming durations are strings like "10h" — extract numbers
-  const totalHours = courses
-    ?.map((c) => parseInt(c.duration?.replace("h", "") || "0"))
-    .reduce((a, b) => a + b, 0) || 0
-
-  // Fetch certificates
-  const { data: certificates } = await supabase
-    .from("certificates")
-    .select("id")
-    .eq("user_id", userId)
+  // ✅ Get durations directly from the joined query
+  const totalHours = enrollments
+    .map((e: any) => {
+      const duration = e.courses?.duration || "0"
+      return parseInt(duration.replace(/\D/g, "") || "0")
+    })
+    .reduce((a, b) => a + b, 0)
 
   const stats = [
     {
@@ -75,7 +100,7 @@ export default async function DashboardPage() {
     },
     {
       title: "Certificates",
-      value: `${certificates?.length || 0}`,
+      value: `${certificates.length}`,
       icon: Award,
       trend: "+1 this month",
       color: "text-purple-500"
@@ -86,13 +111,15 @@ export default async function DashboardPage() {
     <MainLayout>
       <div className="space-y-6">
         <div className="animate-slide-up">
-          <h1 className="text-3xl font-bold text-foreground">Welcome back!</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            Welcome back, {user.email?.split('@')[0]}!
+          </h1>
           <p className="text-muted-foreground mt-1">
             Continue your learning journey with Petrosphere Training
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols=2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat, index) => {
             const Icon = stat.icon
             return (

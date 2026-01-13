@@ -1,5 +1,4 @@
-//app\courses\page.tsx
-
+// app/courses/page.tsx
 'use client'
 
 import { useEffect, useState } from "react"
@@ -9,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search, Filter } from "lucide-react"
-import { supabase } from "@/lib/supabase-client"
+import { useSupabase } from "@/app/provider" // ← Changed
 import type { Course } from "@/lib/types"
 import { CourseDetailsModal } from "@/components/course-detail-modal"
 
@@ -25,12 +24,8 @@ type CourseRow = {
   updated_at?: string
 }
 
-type EnrollmentWithCourse = {
-  course_id: string
-  courses: CourseRow // nested table type, not an array
-}
-
 export default function CoursesPage() {
+  const { supabase, user } = useSupabase() // ← Get from provider
   const [allCourses, setAllCourses] = useState<Course[]>([])
   const [enrolledCourses, setEnrolledCourses] = useState<Course[]>([])
   const [completedCourses, setCompletedCourses] = useState<Course[]>([])
@@ -43,35 +38,24 @@ export default function CoursesPage() {
     title: c.title ?? "Untitled",
     description: c.description ?? "",
     category: c.category ?? "Uncategorized",
-    thumbnail: "", // or use a fallback image path if needed
+    thumbnail: "",
     duration: c.duration ?? "Unknown",
     level: (c.level as Course["level"]) ?? "beginner",
     enrolledCount: c.enrolled_count ?? 0,
-    progress: 0, // default if not tracked yet
+    progress: 0,
     createdAt: new Date(c.created_at ?? new Date().toISOString()),
     updatedAt: new Date(c.updated_at ?? c.created_at ?? new Date().toISOString()),
   })
-  
-
 
   const fetchCourses = async () => {
+    if (!user) return // ← Early return if no user
+    
     setLoading(true)
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
-
-    if (userError || !user) {
-      console.error("User not found:", userError)
-      setLoading(false)
-      return
-    }
 
     const userId = user.id
 
-    // 1. All courses
-    const { data: allData, error: allErr } = await supabase
+    // All courses
+    const { data: allData } = await supabase
       .from("courses")
       .select("*")
       .order("created_at", { ascending: false })
@@ -80,50 +64,45 @@ export default function CoursesPage() {
       setAllCourses(allData.map(mapCourse))
     }
 
+    // Enrolled
+    const { data: enrolledData } = await supabase
+      .from("enrollments")
+      .select("course_id, courses(*)")
+      .eq("user_id", userId)
 
-  
-// Enrolled
-const { data: enrolledData } = await supabase
-  .from("enrollments")
-  .select("course_id, courses(*)")
-  .eq("user_id", userId)
+    if (enrolledData) {
+      const enrolledCoursesList = enrolledData
+        .map((e) => {
+          const course = Array.isArray(e.courses) ? e.courses[0] : e.courses
+          return course ? mapCourse(course) : null
+        })
+        .filter((c): c is Course => c !== null)
+      setEnrolledCourses(enrolledCoursesList)
+    }
 
-if (enrolledData) {
-  const enrolledCoursesList = enrolledData
-    .map((e) => {
-      // Handle both array and single object cases
-      const course = Array.isArray(e.courses) ? e.courses[0] : e.courses
-      return course ? mapCourse(course) : null
-    })
-    .filter((c): c is Course => c !== null)
-  setEnrolledCourses(enrolledCoursesList)
-}
+    // Completed
+    const { data: completedData } = await supabase
+      .from("enrollments")
+      .select("course_id, courses(*)")
+      .eq("user_id", userId)
+      .eq("completed", true)
 
-
-// Completed
-const { data: completedData } = await supabase
-  .from("enrollments")
-  .select("course_id, courses(*)")
-  .eq("user_id", userId)
-  .eq("completed", true)
-
-if (completedData) {
-  const completedCoursesList = completedData
-    .map((e) => {
-      // Handle both array and single object cases
-      const course = Array.isArray(e.courses) ? e.courses[0] : e.courses
-      return course ? mapCourse(course) : null
-    })
-    .filter((c): c is Course => c !== null)
-  setCompletedCourses(completedCoursesList)
-}
+    if (completedData) {
+      const completedCoursesList = completedData
+        .map((e) => {
+          const course = Array.isArray(e.courses) ? e.courses[0] : e.courses
+          return course ? mapCourse(course) : null
+        })
+        .filter((c): c is Course => c !== null)
+      setCompletedCourses(completedCoursesList)
+    }
 
     setLoading(false)
   }
 
   useEffect(() => {
     fetchCourses()
-  }, [])
+  }, [user]) // ← Add user as dependency
 
   return (
     <MainLayout>
@@ -154,7 +133,6 @@ if (completedData) {
             <TabsTrigger value="all">All Courses</TabsTrigger>
           </TabsList>
 
-          {/* Enrolled */}
           <TabsContent value="enrolled" className="mt-6">
             {loading ? (
               <p>Loading...</p>
@@ -173,7 +151,6 @@ if (completedData) {
               </div>
             )}
           </TabsContent>
-
 
           <TabsContent value="completed" className="mt-6">
             {loading ? (
@@ -194,8 +171,6 @@ if (completedData) {
             )}
           </TabsContent>
 
-
-          {/* All */}
           <TabsContent value="all" className="mt-6">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {loading ? (
@@ -217,13 +192,13 @@ if (completedData) {
             </div>
           </TabsContent>
         </Tabs>
+        
         <CourseDetailsModal
           course={selectedCourse}
           open={modalOpen}
           onClose={() => setModalOpen(false)}
-          onEnroll={fetchCourses} // refresh after enrolling
+          onEnroll={fetchCourses}
         />
-
       </div>
     </MainLayout>
   )

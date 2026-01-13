@@ -1,22 +1,21 @@
+// app/page.tsx
 'use client'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createBrowserSupabaseClient } from '@supabase/auth-helpers-nextjs'
-import TutorLandingPage from './landingPage/page'
+import TutorLandingPage from '@/components/tutor-landing-page'
+import { useSupabase } from './provider'
 
 export default function Page() {
+  const { supabase } = useSupabase()
   const [loading, setLoading] = useState(true)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
     const checkSession = async () => {
-      const supabase = createBrowserSupabaseClient()
       const { data: { session } } = await supabase.auth.getSession()
-
+      
       if (session) {
-        setIsLoggedIn(true)
         router.push('/dashboard')
       } else {
         setLoading(false)
@@ -24,7 +23,18 @@ export default function Page() {
     }
 
     checkSession()
-  }, [router])
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        router.push('/dashboard')
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [supabase, router])
 
   if (loading) {
     return (

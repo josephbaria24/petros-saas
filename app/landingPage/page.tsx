@@ -1,3 +1,4 @@
+//app\landingPage\page.tsx
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Search, BookOpen, Award, CreditCard, Globe, ChevronDown, Menu, X, Star, CheckCircle, Facebook, Linkedin, Youtube, Mail, Phone, MapPin, ArrowRightCircle, ArrowRight } from 'lucide-react';

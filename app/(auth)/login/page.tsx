@@ -1,15 +1,16 @@
-//app\(auth)\login\page.tsx
+// app/(auth)/login/page.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase-client'
+import { useSupabase } from '@/app/provider' // ← Use this
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { GalleryVerticalEnd } from 'lucide-react'
 
 export default function LoginPage() {
+  const { supabase } = useSupabase() // ← Get from provider
   const router = useRouter()
 
   const [email, setEmail] = useState('')
@@ -17,20 +18,37 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Clear old cookies on mount
+  useEffect(() => {
+    // Clear any old format cookies
+    document.cookie.split(";").forEach((c) => {
+      const name = c.split("=")[0].trim()
+      if (name.startsWith('sb-')) {
+        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/"
+      }
+    })
+  }, [])
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ 
+      email, 
+      password 
+    })
 
     if (error) {
       setError(error.message)
-    } else {
-      router.push('/dashboard')
+      setLoading(false)
+      return
     }
 
-    setLoading(false)
+    if (data.session) {
+      // Use window.location for hard redirect to ensure session is loaded
+      window.location.href = '/dashboard'
+    }
   }
 
   return (
@@ -84,7 +102,11 @@ export default function LoginPage() {
                 />
               </div>
 
-              {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded text-sm">
+                  {error}
+                </div>
+              )}
 
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'Logging in...' : 'Log In'}
